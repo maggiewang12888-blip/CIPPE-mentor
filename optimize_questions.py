@@ -8,14 +8,17 @@ CIPP/E 题库深度优化脚本
 
 用法：
   1. 设置环境变量  export DEEPSEEK_API_KEY="sk-xxxxxxxx"
-  2. 运行脚本      python3 optimize_questions.py
+  2. 首次运行（强制覆盖全部）  python3 optimize_questions.py --force
+  3. 后续运行（断点续传）      python3 optimize_questions.py
 
 技术特性：
   - asyncio + Semaphore 并发 20
   - DeepSeek Context Caching（自动触发，GDPR 全文作为 system 前缀）
+  - 断点续传：默认跳过 analysis > 500 字符的题目；--force 强制全部覆盖
   - 每 5 题实时回写 questions.json
 """
 
+import argparse
 import asyncio
 import json
 import os
@@ -42,6 +45,7 @@ MODEL = "deepseek-chat"                 # DeepSeek-V3；如需 R1 改为 deepsee
 CONCURRENCY = 20                        # 最大并发请求数
 SAVE_EVERY = 5                          # 每处理 N 题回写一次
 MAX_RETRIES = 3                         # 单题最大重试次数
+SKIP_THRESHOLD = 500                    # analysis 超过此字符数视为已完成（断点续传用）
 
 QUESTIONS_PATH = Path(__file__).parent / "references" / "questions.json"
 GDPR_PATH = Path(__file__).parent / "GDPR.md"
@@ -253,8 +257,33 @@ async def main():
     print(f"  题目总数: {len(questions)}")
     print(f"  GDPR 文本: {len(gdpr_text):,} 字符")
 
-    to_process = list(questions)
-    print(f"  待处理: {len(to_process)}")
+    # ── 断点续传 / 强制覆盖 ──
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--force", action="store_true",
+        help="强制覆盖所有题目，忽略已有 analysis（首次运行时使用）"
+    )
+    args = parser.parse_args()
+
+    if args.force:
+        to_process = list(questions)
+        print(f"  模式: --force 强制覆盖全部")
+        print(f"  待处理: {len(to_process)}")
+    else:
+        to_process = []
+        skipped = 0
+        for q in questions:
+            if len(q.get("analysis", "")) > SKIP_THRESHOLD:
+                skipped += 1
+            else:
+                to_process.append(q)
+        print(f"  模式: 断点续传（跳过 analysis > {SKIP_THRESHOLD} 字符的题目）")
+        print(f"  已完成(跳过): {skipped}")
+        print(f"  待处理: {len(to_process)}")
+
+    if not to_process:
+        print("\n所有题目已完成，无需处理。")
+        return
 
     # ── 构建 system prompt（包含 GDPR 全文，触发缓存） ──
     system_prompt = build_system_prompt(gdpr_text)
