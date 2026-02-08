@@ -13,7 +13,6 @@ CIPP/E 题库深度优化脚本
 技术特性：
   - asyncio + Semaphore 并发 20
   - DeepSeek Context Caching（自动触发，GDPR 全文作为 system 前缀）
-  - 断点续传：analysis 字段 > 500 字符的题目自动跳过
   - 每 5 题实时回写 questions.json
 """
 
@@ -42,7 +41,6 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"                 # DeepSeek-V3；如需 R1 改为 deepseek-reasoner
 CONCURRENCY = 20                        # 最大并发请求数
 SAVE_EVERY = 5                          # 每处理 N 题回写一次
-SKIP_THRESHOLD = 500                    # analysis 字段超过此字符数视为已完成
 MAX_RETRIES = 3                         # 单题最大重试次数
 
 QUESTIONS_PATH = Path(__file__).parent / "references" / "questions.json"
@@ -255,22 +253,8 @@ async def main():
     print(f"  题目总数: {len(questions)}")
     print(f"  GDPR 文本: {len(gdpr_text):,} 字符")
 
-    # ── 断点续传：筛选需要处理的题目 ──
-    to_process = []
-    skipped = 0
-    for q in questions:
-        existing = q.get("analysis", "")
-        if len(existing) > SKIP_THRESHOLD:
-            skipped += 1
-        else:
-            to_process.append(q)
-
-    print(f"  已完成(跳过): {skipped}")
+    to_process = list(questions)
     print(f"  待处理: {len(to_process)}")
-
-    if not to_process:
-        print("\n所有题目已完成，无需处理。")
-        return
 
     # ── 构建 system prompt（包含 GDPR 全文，触发缓存） ──
     system_prompt = build_system_prompt(gdpr_text)
