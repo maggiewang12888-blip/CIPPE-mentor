@@ -85,6 +85,139 @@
             outline: none;
             border-color: #3b82f6;
         }
+
+        /* ═══ AI深度解读模块 ═══ */
+        .ai-analysis-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .ai-analysis-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+            border-bottom: 1px solid #d1fae5;
+        }
+        .ai-analysis-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ai-analysis-icon {
+            font-size: 22px;
+        }
+        .ai-analysis-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #065f46;
+            margin: 0;
+        }
+        .ai-analysis-toggle {
+            background: rgba(6,95,70,0.08);
+            color: #065f46;
+            border: 1px solid rgba(6,95,70,0.15);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ai-analysis-toggle:hover {
+            background: rgba(6,95,70,0.15);
+        }
+        .ai-analysis-body {
+            padding: 16px 20px;
+            position: relative;
+        }
+
+        /* 各模块卡片 */
+        .ai-section {
+            margin-bottom: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid;
+        }
+        .ai-section:last-child { margin-bottom: 0; }
+        .ai-section-blue   { background: linear-gradient(135deg, #eff6ff, #eef2ff); border-color: #60a5fa; }
+        .ai-section-purple { background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-color: #a78bfa; }
+        .ai-section-amber  { background: linear-gradient(135deg, #fffbeb, #fff7ed); border-color: #fbbf24; }
+        .ai-section-teal   { background: linear-gradient(135deg, #f0fdfa, #ecfeff); border-color: #2dd4bf; }
+
+        .ai-section-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .ai-section-icon {
+            font-size: 14px;
+        }
+        .ai-section-content {
+            font-size: 14px;
+            line-height: 1.75;
+            color: #374151;
+        }
+        .ai-para {
+            margin: 0 0 8px 0;
+            text-align: justify;
+        }
+        .ai-para:last-child { margin-bottom: 0; }
+
+        /* 列表项（步进器风格） */
+        .ai-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 6px 0;
+            padding-left: 4px;
+        }
+        .ai-list-dot {
+            width: 8px;
+            height: 8px;
+            min-width: 8px;
+            border-radius: 50%;
+            margin-top: 7px;
+        }
+
+        /* 加粗关键术语 */
+        .ai-analysis-bold {
+            font-weight: 600;
+            color: #1e40af;
+        }
+
+        /* 渐隐遮罩 + 展开按钮 */
+        .ai-analysis-fade {
+            position: relative;
+            text-align: center;
+            padding: 40px 0 8px;
+            margin-top: -32px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 70%);
+        }
+        .ai-analysis-expand-btn {
+            background: linear-gradient(135deg, #059669, #0d9488);
+            color: #fff;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(5,150,105,0.25);
+            transition: all 0.2s;
+        }
+        .ai-analysis-expand-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(5,150,105,0.35);
+        }
     </style>
 </head>
 <body>
@@ -6254,6 +6387,156 @@
             </svg>
         );
 
+        // ─── AI深度解读：解析 & 渲染 ───
+
+        // 将 analysis 文本按【xxx】标记拆分为结构化模块
+        function parseAnalysis(text) {
+            if (!text) return [];
+            const regex = /【(考点定位|法理深度|判例与场景|知识图谱)】/g;
+            const sections = [];
+            let lastIdx = 0, lastLabel = null;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                if (lastLabel !== null) {
+                    sections.push({ label: lastLabel, body: text.slice(lastIdx, match.index).trim() });
+                }
+                lastLabel = match[1];
+                lastIdx = match.index + match[0].length;
+            }
+            if (lastLabel !== null) {
+                sections.push({ label: lastLabel, body: text.slice(lastIdx).trim() });
+            }
+            return sections;
+        }
+
+        // 将 markdown 风格文本渲染为 React 元素（**加粗**、编号列表、代码块）
+        function renderMarkdownText(text) {
+            // 移除 mermaid / 代码块
+            text = text.replace(/```[\s\S]*?```/g, '');
+            const lines = text.split('\n');
+            const elements = [];
+            let paraLines = [];
+
+            const flushPara = () => {
+                if (paraLines.length === 0) return;
+                const joined = paraLines.join(' ').trim();
+                if (joined) elements.push({ type: 'para', text: joined });
+                paraLines = [];
+            };
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) { flushPara(); continue; }
+                // 编号列表 (1. xxx 或 1.  xxx)
+                if (/^\d+\.\s+/.test(trimmed)) {
+                    flushPara();
+                    elements.push({ type: 'listItem', text: trimmed.replace(/^\d+\.\s+/, '') });
+                }
+                // 无序列表 (- xxx 或 * xxx，但不是 **bold**)
+                else if (/^[-*]\s+/.test(trimmed) && !/^\*\*/.test(trimmed)) {
+                    flushPara();
+                    elements.push({ type: 'listItem', text: trimmed.replace(/^[-*]\s+/, '') });
+                }
+                else {
+                    paraLines.push(trimmed);
+                }
+            }
+            flushPara();
+            return elements;
+        }
+
+        // 将含 **bold** 标记的字符串转为 React 节点
+        function renderInline(text, baseKey) {
+            const parts = text.split(/(\*\*[^*]+\*\*)/g);
+            return parts.map((part, i) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    return React.createElement('strong', {
+                        key: baseKey + '-b-' + i,
+                        className: 'ai-analysis-bold'
+                    }, part.slice(2, -2));
+                }
+                return React.createElement('span', { key: baseKey + '-t-' + i }, part);
+            });
+        }
+
+        // 模块配置
+        const SECTION_CONFIG = {
+            '考点定位': { icon: '🎯', color: 'blue',   gradient: 'from-blue-50 to-indigo-50',   border: 'border-blue-400',   badge: 'bg-blue-100 text-blue-800',   iconBg: 'bg-blue-100' },
+            '法理深度': { icon: '⚖️', color: 'purple', gradient: 'from-purple-50 to-fuchsia-50', border: 'border-purple-400', badge: 'bg-purple-100 text-purple-800', iconBg: 'bg-purple-100' },
+            '判例与场景': { icon: '📋', color: 'amber', gradient: 'from-amber-50 to-orange-50',   border: 'border-amber-400',  badge: 'bg-amber-100 text-amber-800',  iconBg: 'bg-amber-100' },
+            '知识图谱': { icon: '🔗', color: 'teal',   gradient: 'from-teal-50 to-cyan-50',     border: 'border-teal-400',   badge: 'bg-teal-100 text-teal-800',    iconBg: 'bg-teal-100' },
+        };
+
+        // AnalysisCard 组件（含展开/收起）
+        function AnalysisCard({ analysisText }) {
+            const [expanded, setExpanded] = useState(false);
+            const sections = useMemo(() => parseAnalysis(analysisText), [analysisText]);
+
+            if (!sections.length) return null;
+
+            // 收起时只显示第一个模块
+            const visible = expanded ? sections : sections.slice(0, 1);
+
+            return React.createElement('div', { className: 'ai-analysis-card' },
+                // 标题栏
+                React.createElement('div', { className: 'ai-analysis-header' },
+                    React.createElement('div', { className: 'ai-analysis-header-left' },
+                        React.createElement('span', { className: 'ai-analysis-icon' }, '🤖'),
+                        React.createElement('h4', { className: 'ai-analysis-title' }, 'AI深度解读')
+                    ),
+                    React.createElement('button', {
+                        className: 'ai-analysis-toggle',
+                        onClick: () => setExpanded(!expanded)
+                    }, expanded ? '收起 ▲' : '展开全部 ▼')
+                ),
+
+                // 模块内容
+                React.createElement('div', { className: 'ai-analysis-body' },
+                    visible.map((sec, sIdx) => {
+                        const cfg = SECTION_CONFIG[sec.label] || SECTION_CONFIG['考点定位'];
+                        const elems = renderMarkdownText(sec.body);
+
+                        return React.createElement('div', {
+                            key: sIdx,
+                            className: `ai-section ai-section-${cfg.color}`
+                        },
+                            // 模块标题 Badge
+                            React.createElement('div', { className: 'ai-section-badge ' + cfg.badge },
+                                React.createElement('span', { className: 'ai-section-icon' }, cfg.icon),
+                                sec.label
+                            ),
+                            // 模块正文
+                            React.createElement('div', { className: 'ai-section-content' },
+                                elems.map((el, eIdx) => {
+                                    if (el.type === 'listItem') {
+                                        return React.createElement('div', {
+                                            key: eIdx,
+                                            className: 'ai-list-item'
+                                        },
+                                            React.createElement('span', { className: `ai-list-dot bg-${cfg.color}-400` }),
+                                            React.createElement('span', null, renderInline(el.text, sIdx + '-' + eIdx))
+                                        );
+                                    }
+                                    return React.createElement('p', {
+                                        key: eIdx,
+                                        className: 'ai-para'
+                                    }, renderInline(el.text, sIdx + '-' + eIdx));
+                                })
+                            )
+                        );
+                    }),
+
+                    // 收起状态下的渐隐遮罩
+                    !expanded && sections.length > 1 && React.createElement('div', { className: 'ai-analysis-fade' },
+                        React.createElement('button', {
+                            className: 'ai-analysis-expand-btn',
+                            onClick: () => setExpanded(true)
+                        }, '查看完整解读 (', sections.length, ' 个模块)')
+                    )
+                )
+            );
+        }
+
         // 主应用组件
         const CIPPEQuizApp = () => {
             // 状态管理
@@ -6962,17 +7245,7 @@
                                                             )}
 
                                                             {item.question.analysis && item.question.analysis.length > 0 && (
-                                                                <div className="bg-emerald-50 border-l-4 border-emerald-600 p-4 rounded-r-lg mt-3">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <BookOpen className="w-5 h-5 text-emerald-600" />
-                                                                        <h4 className="font-bold text-emerald-900">🤖 AI深度解读</h4>
-                                                                    </div>
-                                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                                        {item.question.analysis.split('\n\n').map((para, aIdx) => (
-                                                                            <p key={aIdx} className="text-justify">{para}</p>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
+                                                                React.createElement(AnalysisCard, { analysisText: item.question.analysis })
                                                             )}
                                                         </div>
                                                     </div>
@@ -7182,17 +7455,7 @@
                                             )}
 
                                             {currentQuestion.analysis && currentQuestion.analysis.length > 0 && (
-                                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border-l-4 border-emerald-600">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <BookOpen className="w-5 h-5 text-emerald-600" />
-                                                        <h4 className="font-bold text-emerald-900">🤖 AI深度解读</h4>
-                                                    </div>
-                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                        {currentQuestion.analysis.split('\n\n').map((para, aIdx) => (
-                                                            <p key={aIdx} className="text-justify">{para}</p>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                React.createElement(AnalysisCard, { analysisText: currentQuestion.analysis })
                                             )}
                                         </div>
                                     )}
