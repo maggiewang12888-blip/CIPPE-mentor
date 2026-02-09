@@ -86,54 +86,80 @@
             border-color: #3b82f6;
         }
 
-        /* ═══ AI深度解读模块 ═══ */
-        .ai-analysis-card {
+        /* ═══ 通用可折叠卡片 ═══ */
+        .collapsible-card {
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
             overflow: hidden;
-            margin-top: 12px;
         }
-        .ai-analysis-header {
+        .collapsible-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 20px;
-            background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
-            border-bottom: 1px solid #d1fae5;
+            padding: 14px 20px;
+            border-bottom: 1px solid transparent;
         }
-        .ai-analysis-header-left {
+        .collapsible-header-left {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .ai-analysis-icon {
-            font-size: 22px;
-        }
-        .ai-analysis-title {
-            font-size: 16px;
+        .collapsible-icon { font-size: 20px; }
+        .collapsible-title {
+            font-size: 15px;
             font-weight: 700;
-            color: #065f46;
             margin: 0;
         }
-        .ai-analysis-toggle {
-            background: rgba(6,95,70,0.08);
-            color: #065f46;
-            border: 1px solid rgba(6,95,70,0.15);
-            padding: 5px 14px;
+        .collapsible-toggle {
+            padding: 4px 14px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
+            border: 1px solid;
             transition: all 0.2s;
         }
-        .ai-analysis-toggle:hover {
-            background: rgba(6,95,70,0.15);
-        }
-        .ai-analysis-body {
+        .collapsible-toggle:hover { filter: brightness(0.95); }
+        .collapsible-body {
             padding: 16px 20px;
-            position: relative;
         }
+
+        /* AI深度解读 配色 */
+        .collapsible-header-analysis {
+            background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+            border-bottom-color: #d1fae5;
+        }
+        .collapsible-header-analysis .collapsible-title { color: #065f46; }
+        .collapsible-header-analysis .collapsible-toggle {
+            background: rgba(6,95,70,0.08);
+            color: #065f46;
+            border-color: rgba(6,95,70,0.15);
+        }
+
+        /* 法条原文 配色 */
+        .collapsible-header-legal {
+            background: linear-gradient(135deg, #faf5ff, #f5f3ff);
+            border-bottom-color: #e9d5ff;
+        }
+        .collapsible-header-legal .collapsible-title { color: #581c87; }
+        .collapsible-header-legal .collapsible-toggle {
+            background: rgba(88,28,135,0.08);
+            color: #581c87;
+            border-color: rgba(88,28,135,0.15);
+        }
+
+        /* 法条原文 正文 */
+        .legal-ref-content {
+            font-size: 14px;
+            line-height: 1.75;
+            color: #374151;
+        }
+        .legal-ref-para {
+            margin: 0 0 10px 0;
+            text-align: justify;
+        }
+        .legal-ref-para:last-child { margin-bottom: 0; }
 
         /* 各模块卡片 */
         .ai-section {
@@ -194,30 +220,6 @@
             color: #1e40af;
         }
 
-        /* 渐隐遮罩 + 展开按钮 */
-        .ai-analysis-fade {
-            position: relative;
-            text-align: center;
-            padding: 40px 0 8px;
-            margin-top: -32px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 70%);
-        }
-        .ai-analysis-expand-btn {
-            background: linear-gradient(135deg, #059669, #0d9488);
-            color: #fff;
-            border: none;
-            padding: 8px 24px;
-            border-radius: 24px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(5,150,105,0.25);
-            transition: all 0.2s;
-        }
-        .ai-analysis-expand-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(5,150,105,0.35);
-        }
     </style>
 </head>
 <body>
@@ -6467,71 +6469,82 @@
             '知识图谱': { icon: '🔗', color: 'teal',   gradient: 'from-teal-50 to-cyan-50',     border: 'border-teal-400',   badge: 'bg-teal-100 text-teal-800',    iconBg: 'bg-teal-100' },
         };
 
-        // AnalysisCard 组件（含展开/收起）
-        function AnalysisCard({ analysisText }) {
-            const [expanded, setExpanded] = useState(false);
-            const sections = useMemo(() => parseAnalysis(analysisText), [analysisText]);
-
-            if (!sections.length) return null;
-
-            // 收起时只显示第一个模块
-            const visible = expanded ? sections : sections.slice(0, 1);
-
-            return React.createElement('div', { className: 'ai-analysis-card' },
-                // 标题栏
-                React.createElement('div', { className: 'ai-analysis-header' },
-                    React.createElement('div', { className: 'ai-analysis-header-left' },
-                        React.createElement('span', { className: 'ai-analysis-icon' }, '🤖'),
-                        React.createElement('h4', { className: 'ai-analysis-title' }, 'AI深度解读')
+        // 通用可折叠卡片组件（AI深度解读 和 法条原文 共用）
+        // expanded: 由外部偏好控制；onToggle: 更新全局偏好
+        function CollapsibleCard({ title, icon, headerClass, expanded, onToggle, children }) {
+            return React.createElement('div', { className: 'collapsible-card' },
+                React.createElement('div', { className: 'collapsible-header ' + (headerClass || '') },
+                    React.createElement('div', { className: 'collapsible-header-left' },
+                        React.createElement('span', { className: 'collapsible-icon' }, icon),
+                        React.createElement('h4', { className: 'collapsible-title' }, title)
                     ),
                     React.createElement('button', {
-                        className: 'ai-analysis-toggle',
-                        onClick: () => setExpanded(!expanded)
-                    }, expanded ? '收起 ▲' : '展开全部 ▼')
+                        className: 'collapsible-toggle',
+                        onClick: onToggle
+                    }, expanded ? '收起 ▲' : '展开 ▼')
                 ),
+                expanded && React.createElement('div', { className: 'collapsible-body' }, children)
+            );
+        }
 
-                // 模块内容
-                React.createElement('div', { className: 'ai-analysis-body' },
-                    visible.map((sec, sIdx) => {
-                        const cfg = SECTION_CONFIG[sec.label] || SECTION_CONFIG['考点定位'];
-                        const elems = renderMarkdownText(sec.body);
+        // AnalysisCard 组件
+        function AnalysisCard({ analysisText, expanded, onToggle }) {
+            const sections = useMemo(() => parseAnalysis(analysisText), [analysisText]);
+            if (!sections.length) return null;
 
-                        return React.createElement('div', {
-                            key: sIdx,
-                            className: `ai-section ai-section-${cfg.color}`
-                        },
-                            // 模块标题 Badge
-                            React.createElement('div', { className: 'ai-section-badge ' + cfg.badge },
-                                React.createElement('span', { className: 'ai-section-icon' }, cfg.icon),
-                                sec.label
-                            ),
-                            // 模块正文
-                            React.createElement('div', { className: 'ai-section-content' },
-                                elems.map((el, eIdx) => {
-                                    if (el.type === 'listItem') {
-                                        return React.createElement('div', {
-                                            key: eIdx,
-                                            className: 'ai-list-item'
-                                        },
-                                            React.createElement('span', { className: `ai-list-dot bg-${cfg.color}-400` }),
-                                            React.createElement('span', null, renderInline(el.text, sIdx + '-' + eIdx))
-                                        );
-                                    }
-                                    return React.createElement('p', {
-                                        key: eIdx,
-                                        className: 'ai-para'
-                                    }, renderInline(el.text, sIdx + '-' + eIdx));
-                                })
-                            )
-                        );
-                    }),
+            const content = sections.map((sec, sIdx) => {
+                const cfg = SECTION_CONFIG[sec.label] || SECTION_CONFIG['考点定位'];
+                const elems = renderMarkdownText(sec.body);
+                return React.createElement('div', {
+                    key: sIdx,
+                    className: `ai-section ai-section-${cfg.color}`
+                },
+                    React.createElement('div', { className: 'ai-section-badge ' + cfg.badge },
+                        React.createElement('span', { className: 'ai-section-icon' }, cfg.icon),
+                        sec.label
+                    ),
+                    React.createElement('div', { className: 'ai-section-content' },
+                        elems.map((el, eIdx) => {
+                            if (el.type === 'listItem') {
+                                return React.createElement('div', {
+                                    key: eIdx, className: 'ai-list-item'
+                                },
+                                    React.createElement('span', { className: `ai-list-dot bg-${cfg.color}-400` }),
+                                    React.createElement('span', null, renderInline(el.text, sIdx + '-' + eIdx))
+                                );
+                            }
+                            return React.createElement('p', {
+                                key: eIdx, className: 'ai-para'
+                            }, renderInline(el.text, sIdx + '-' + eIdx));
+                        })
+                    )
+                );
+            });
 
-                    // 收起状态下的渐隐遮罩
-                    !expanded && sections.length > 1 && React.createElement('div', { className: 'ai-analysis-fade' },
-                        React.createElement('button', {
-                            className: 'ai-analysis-expand-btn',
-                            onClick: () => setExpanded(true)
-                        }, '查看完整解读 (', sections.length, ' 个模块)')
+            return React.createElement(CollapsibleCard, {
+                title: 'AI深度解读',
+                icon: '🤖',
+                headerClass: 'collapsible-header-analysis',
+                expanded: expanded,
+                onToggle: onToggle
+            }, content);
+        }
+
+        // LegalRefCard 组件（法条原文卡片，含展开/收起）
+        function LegalRefCard({ legalRef, expanded, onToggle }) {
+            if (!legalRef || legalRef.includes('待补充') || legalRef.includes('相关法律条文')) return null;
+            const paras = legalRef.split('\n\n').filter(p => p.trim());
+
+            return React.createElement(CollapsibleCard, {
+                title: '法律条文',
+                icon: '⚖️',
+                headerClass: 'collapsible-header-legal',
+                expanded: expanded,
+                onToggle: onToggle
+            },
+                React.createElement('div', { className: 'legal-ref-content' },
+                    paras.map((para, idx) =>
+                        React.createElement('p', { key: idx, className: 'legal-ref-para' }, para)
                     )
                 )
             );
@@ -6556,6 +6569,9 @@
             const [examTimeRemaining, setExamTimeRemaining] = useState(150 * 60);
             const [examStartTime, setExamStartTime] = useState(null);
             const [testQuestionIds, setTestQuestionIds] = useState(new Set());
+            // 用户展开/收起偏好（跨题记忆）
+            const [prefExpandAnalysis, setPrefExpandAnalysis] = useState(false);
+            const [prefExpandLegal, setPrefExpandLegal] = useState(false);
 
             // 加载题库数据
             useEffect(() => {
@@ -7217,36 +7233,19 @@
                                                                 })}
                                                             </div>
 
-                                                            {/* 详细解析 */}
-                                                            <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-r-lg">
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <BookOpen className="w-5 h-5 text-blue-600" />
-                                                                    <h4 className="font-bold text-blue-900">📖 考点分析</h4>
-                                                                </div>
-                                                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                                    {item.question.explanation}
-                                                                </p>
-                                                            </div>
-
-                                                            {item.question.legalReference &&
-                                                             !item.question.legalReference.includes('待补充') &&
-                                                             !item.question.legalReference.includes('相关法律条文') && (
-                                                                <div className="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg mt-3">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <Award className="w-5 h-5 text-purple-600" />
-                                                                        <h4 className="font-bold text-purple-900">⚖️ 法律条文</h4>
-                                                                    </div>
-                                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                                        {item.question.legalReference.split('\n\n').map((para, pIdx) => (
-                                                                            <p key={pIdx} className="text-justify">{para}</p>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {item.question.analysis && item.question.analysis.length > 0 && (
-                                                                React.createElement(AnalysisCard, { analysisText: item.question.analysis })
-                                                            )}
+                                                            {/* AI深度解读 → 法条原文 */}
+                                                            {item.question.analysis && item.question.analysis.length > 0 &&
+                                                                React.createElement(AnalysisCard, {
+                                                                    analysisText: item.question.analysis,
+                                                                    expanded: prefExpandAnalysis,
+                                                                    onToggle: () => setPrefExpandAnalysis(prev => !prev)
+                                                                })
+                                                            }
+                                                            {React.createElement(LegalRefCard, {
+                                                                legalRef: item.question.legalReference,
+                                                                expanded: prefExpandLegal,
+                                                                onToggle: () => setPrefExpandLegal(prev => !prev)
+                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -7427,36 +7426,21 @@
                                         })}
                                     </div>
 
-                                    {/* 详细解析(练习/复习模式) */}
+                                    {/* 详细解析(练习/复习模式): AI深度解读 → 法条原文 */}
                                     {(mode === 'practice' || mode === 'review') && showExplanation && (
-                                        <div className="space-y-4 animate-slide-down mt-6">
-                                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-l-4 border-blue-600">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <BookOpen className="w-5 h-5 text-blue-600" />
-                                                    <h4 className="font-bold text-blue-900">📖 考点分析</h4>
-                                                </div>
-                                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                    {currentQuestion.explanation}
-                                                </p>
-                                            </div>
-
-                                            {currentQuestion.legalReference && !currentQuestion.legalReference.includes('待补充') && !currentQuestion.legalReference.includes('相关法律条文') && (
-                                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-l-4 border-purple-600">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <Award className="w-5 h-5 text-purple-600" />
-                                                        <h4 className="font-bold text-purple-900">⚖️ 法律条文</h4>
-                                                    </div>
-                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                        {currentQuestion.legalReference.split('\n\n').map((para, idx) => (
-                                                            <p key={idx} className="text-justify">{para}</p>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {currentQuestion.analysis && currentQuestion.analysis.length > 0 && (
-                                                React.createElement(AnalysisCard, { analysisText: currentQuestion.analysis })
-                                            )}
+                                        <div className="space-y-3 animate-slide-down mt-6">
+                                            {currentQuestion.analysis && currentQuestion.analysis.length > 0 &&
+                                                React.createElement(AnalysisCard, {
+                                                    analysisText: currentQuestion.analysis,
+                                                    expanded: prefExpandAnalysis,
+                                                    onToggle: () => setPrefExpandAnalysis(prev => !prev)
+                                                })
+                                            }
+                                            {React.createElement(LegalRefCard, {
+                                                legalRef: currentQuestion.legalReference,
+                                                expanded: prefExpandLegal,
+                                                onToggle: () => setPrefExpandLegal(prev => !prev)
+                                            })}
                                         </div>
                                     )}
 
