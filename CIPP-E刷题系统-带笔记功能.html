@@ -218,6 +218,45 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(5,150,105,0.35);
         }
+
+        /* ===== 移动端优化样式 ===== */
+        @media (max-width: 768px) {
+            .ai-analysis-header {
+                padding: 12px 16px;
+            }
+            .ai-analysis-title {
+                font-size: 14px;
+            }
+            .ai-analysis-toggle {
+                font-size: 12px;
+                padding: 4px 10px;
+            }
+            .ai-analysis-body {
+                padding: 12px 16px;
+            }
+            .ai-section {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            .ai-section-content {
+                font-size: 13px;
+            }
+            .note-box {
+                padding: 12px;
+            }
+            .note-input {
+                font-size: 14px;
+                min-height: 80px;
+            }
+        }
+
+        /* 防止移动端字体缩放 */
+        @media (max-width: 480px) {
+            body {
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -6541,7 +6580,7 @@
                     !expanded && sections.length > 1 && React.createElement('div', { className: 'ai-analysis-fade' },
                         React.createElement('button', {
                             className: 'ai-analysis-expand-btn',
-                            onClick: () => setExpanded(true)
+                            onClick: toggleExpanded
                         }, '查看完整解读 (', sections.length, ' 个模块)')
                     )
                 )
@@ -7089,6 +7128,12 @@
                                 </p>
                             </div>
                         )}
+
+                        {/* 版权声明 */}
+                        <div className="mt-12 text-center text-white/80 text-sm space-y-2">
+                            <p>Copyright © 2026 Maggie Wang. All Rights Reserved.</p>
+                            <p>本站题目来源于公开渠道，版权归原作者所有，仅作学习交流之用。</p>
+                        </div>
                     </div>
                 </div>
             );
