@@ -6469,8 +6469,19 @@
 
         // AnalysisCard 组件（含展开/收起）
         function AnalysisCard({ analysisText }) {
-            const [expanded, setExpanded] = useState(false);
+            // 从 localStorage 读取上次的展开状态，默认为 false
+            const [expanded, setExpanded] = useState(() => {
+                const saved = localStorage.getItem('cippe-ai-analysis-expanded');
+                return saved === 'true';
+            });
             const sections = useMemo(() => parseAnalysis(analysisText), [analysisText]);
+
+            // 切换展开状态时保存到 localStorage
+            const toggleExpanded = () => {
+                const newState = !expanded;
+                setExpanded(newState);
+                localStorage.setItem('cippe-ai-analysis-expanded', newState.toString());
+            };
 
             if (!sections.length) return null;
 
@@ -6486,7 +6497,7 @@
                     ),
                     React.createElement('button', {
                         className: 'ai-analysis-toggle',
-                        onClick: () => setExpanded(!expanded)
+                        onClick: toggleExpanded
                     }, expanded ? '收起 ▲' : '展开全部 ▼')
                 ),
 
@@ -6532,6 +6543,52 @@
                             className: 'ai-analysis-expand-btn',
                             onClick: () => setExpanded(true)
                         }, '查看完整解读 (', sections.length, ' 个模块)')
+                    )
+                )
+            );
+        }
+
+        // LegalReferenceCard 组件（含展开/收起）
+        function LegalReferenceCard({ legalReference }) {
+            // 从 localStorage 读取上次的展开状态，默认为 false
+            const [expanded, setExpanded] = useState(() => {
+                const saved = localStorage.getItem('cippe-legal-reference-expanded');
+                return saved === 'true';
+            });
+
+            // 切换展开状态时保存到 localStorage
+            const toggleExpanded = () => {
+                const newState = !expanded;
+                setExpanded(newState);
+                localStorage.setItem('cippe-legal-reference-expanded', newState.toString());
+            };
+
+            if (!legalReference || legalReference.includes('待补充') || legalReference.includes('相关法律条文')) {
+                return null;
+            }
+
+            return React.createElement('div', {
+                className: 'bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-l-4 border-purple-600 overflow-hidden'
+            },
+                // 标题栏
+                React.createElement('div', {
+                    className: 'flex items-center justify-between p-6 cursor-pointer',
+                    onClick: toggleExpanded
+                },
+                    React.createElement('div', { className: 'flex items-center gap-2' },
+                        React.createElement(Award, { className: 'w-5 h-5 text-purple-600' }),
+                        React.createElement('h4', { className: 'font-bold text-purple-900' }, '⚖️ 法条原文')
+                    ),
+                    React.createElement('button', {
+                        className: 'text-purple-600 font-semibold hover:text-purple-700 transition-colors'
+                    }, expanded ? '收起 ▲' : '展开 ▼')
+                ),
+                // 内容区域
+                expanded && React.createElement('div', {
+                    className: 'px-6 pb-6 text-gray-700 text-sm leading-relaxed space-y-2'
+                },
+                    legalReference.split('\n\n').map((para, idx) =>
+                        React.createElement('p', { key: idx, className: 'text-justify' }, para)
                     )
                 )
             );
@@ -7218,35 +7275,11 @@
                                                             </div>
 
                                                             {/* 详细解析 */}
-                                                            <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-r-lg">
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <BookOpen className="w-5 h-5 text-blue-600" />
-                                                                    <h4 className="font-bold text-blue-900">📖 考点分析</h4>
-                                                                </div>
-                                                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                                    {item.question.explanation}
-                                                                </p>
-                                                            </div>
-
-                                                            {item.question.legalReference &&
-                                                             !item.question.legalReference.includes('待补充') &&
-                                                             !item.question.legalReference.includes('相关法律条文') && (
-                                                                <div className="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg mt-3">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <Award className="w-5 h-5 text-purple-600" />
-                                                                        <h4 className="font-bold text-purple-900">⚖️ 法律条文</h4>
-                                                                    </div>
-                                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                                        {item.question.legalReference.split('\n\n').map((para, pIdx) => (
-                                                                            <p key={pIdx} className="text-justify">{para}</p>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
                                                             {item.question.analysis && item.question.analysis.length > 0 && (
                                                                 React.createElement(AnalysisCard, { analysisText: item.question.analysis })
                                                             )}
+
+                                                            {React.createElement(LegalReferenceCard, { legalReference: item.question.legalReference })}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -7430,33 +7463,11 @@
                                     {/* 详细解析(练习/复习模式) */}
                                     {(mode === 'practice' || mode === 'review') && showExplanation && (
                                         <div className="space-y-4 animate-slide-down mt-6">
-                                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-l-4 border-blue-600">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <BookOpen className="w-5 h-5 text-blue-600" />
-                                                    <h4 className="font-bold text-blue-900">📖 考点分析</h4>
-                                                </div>
-                                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                    {currentQuestion.explanation}
-                                                </p>
-                                            </div>
-
-                                            {currentQuestion.legalReference && !currentQuestion.legalReference.includes('待补充') && !currentQuestion.legalReference.includes('相关法律条文') && (
-                                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-l-4 border-purple-600">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <Award className="w-5 h-5 text-purple-600" />
-                                                        <h4 className="font-bold text-purple-900">⚖️ 法律条文</h4>
-                                                    </div>
-                                                    <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                                                        {currentQuestion.legalReference.split('\n\n').map((para, idx) => (
-                                                            <p key={idx} className="text-justify">{para}</p>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
                                             {currentQuestion.analysis && currentQuestion.analysis.length > 0 && (
                                                 React.createElement(AnalysisCard, { analysisText: currentQuestion.analysis })
                                             )}
+
+                                            {React.createElement(LegalReferenceCard, { legalReference: currentQuestion.legalReference })}
                                         </div>
                                     )}
 
