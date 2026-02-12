@@ -6655,22 +6655,33 @@
 
             // 加载题库数据
             useEffect(() => {
+                console.log('=== 加载题库数据 ===');
                 const questionsData = JSON.parse(document.getElementById('questions-data').textContent);
                 setQuestions(questionsData);
-                
+                console.log('题库总数:', questionsData.length);
+
                 const savedProgress = localStorage.getItem('cipp-e-progress');
                 if (savedProgress) {
-                    setPracticeProgress(JSON.parse(savedProgress));
+                    const progress = JSON.parse(savedProgress);
+                    setPracticeProgress(progress);
+                    console.log('加载练习进度:', Object.keys(progress).length, '题');
                 }
 
                 const savedCompleted = localStorage.getItem('cipp-e-completed');
                 if (savedCompleted) {
-                    setCompletedQuestions(new Set(JSON.parse(savedCompleted)));
+                    const completedArray = JSON.parse(savedCompleted);
+                    setCompletedQuestions(new Set(completedArray));
+                    console.log('=== 从 localStorage 加载已完成题目 ===');
+                    console.log('已完成题目数:', completedArray.length);
+                    console.log('已完成题目ID:', completedArray);
+                } else {
+                    console.log('localStorage 中没有已完成题目记录');
                 }
 
                 const savedAttempts = localStorage.getItem('cipp-e-total-attempts');
                 if (savedAttempts) {
                     setTotalAttempts(parseInt(savedAttempts));
+                    console.log('累计做题次数:', savedAttempts);
                 }
             }, []);
 
@@ -6718,7 +6729,11 @@
 
             useEffect(() => {
                 if (completedQuestions.size > 0) {
-                    localStorage.setItem('cipp-e-completed', JSON.stringify([...completedQuestions]));
+                    const completedArray = [...completedQuestions];
+                    localStorage.setItem('cipp-e-completed', JSON.stringify(completedArray));
+                    console.log('=== 保存已完成题目到 localStorage ===');
+                    console.log('已完成题目数:', completedQuestions.size);
+                    console.log('保存的数据:', completedArray);
                 }
             }, [completedQuestions]);
 
@@ -6748,24 +6763,42 @@
 
             // 开始练习模式 - 按顺序出题
             const startPractice = () => {
+                // 确保题库已加载
+                if (!questions || questions.length === 0) {
+                    alert('题库加载中，请稍后重试...');
+                    return;
+                }
+
+                console.log('=== 开始练习模式 ===');
+                console.log('题库总数:', questions.length);
+                console.log('已完成题目数:', completedQuestions.size);
+                console.log('已完成题目ID列表:', Array.from(completedQuestions));
+
                 // 找到第一道未完成的题目
                 let firstUncompletedIndex = -1;
                 for (let i = 0; i < questions.length; i++) {
                     if (!completedQuestions.has(questions[i].id)) {
                         firstUncompletedIndex = i;
+                        console.log('找到第一道未完成题目:', {
+                            索引: i,
+                            题目ID: questions[i].id,
+                            题目: questions[i].question.substring(0, 50) + '...'
+                        });
                         break;
                     }
                 }
-                
+
                 if (firstUncompletedIndex === -1) {
                     // 所有题目都已完成
+                    console.log('所有题目已完成!');
                     if (confirm('🎉 恭喜!您已完成所有289道题目!\n\n是否重置进度重新开始练习?')) {
                         resetAllProgress();
                         return;
                     }
                     return;
                 }
-                
+
+                console.log('跳转到题目索引:', firstUncompletedIndex);
                 setMode('practice');
                 setCurrentQuestionIndex(firstUncompletedIndex);
                 setSelectedAnswer(null);
@@ -6849,12 +6882,21 @@
 
                 // 标记为已完成(练习模式)
                 if (mode === 'practice') {
-                    setCompletedQuestions(prev => new Set([...prev, currentQuestion.id]));
+                    console.log('=== 标记题目为已完成 ===');
+                    console.log('题目ID:', currentQuestion.id);
+                    console.log('题目索引:', currentQuestionIndex);
+                    console.log('答案是否正确:', isCorrect);
+                    setCompletedQuestions(prev => {
+                        const newSet = new Set([...prev, currentQuestion.id]);
+                        console.log('更新后已完成题目数:', newSet.size);
+                        console.log('已完成题目ID列表:', Array.from(newSet));
+                        return newSet;
+                    });
                 }
-                
+
                 // 累计做题次数
                 setTotalAttempts(prev => prev + 1);
-                
+
                 setShowExplanation(true);
             };
 
